@@ -32,9 +32,10 @@ public class GlacierEntry {
     Options options = createOptions();
     try {
 
-      if (args.length < 3)
+      if (args.length < 3){
+        printUsage();
         throw new GlacierException("Must provide at least three arguments.");
-
+      }
       CommandLineParser parser = new PosixParser();
       CommandLine cmd = parser.parse(options, args);
 
@@ -62,6 +63,17 @@ public class GlacierEntry {
       LOG.info("File " + pFileName + (GlacierOperations.deleteArchive(pVaultName, pFileName)?" deleted successfully":" not deleted"));
     else 
       LOG.info("Command not supported.");
+  }
+
+  /**
+   * Method that prints parameters needed
+   */
+  private static void printUsage(){
+    System.out.println("Parameters needed are:");
+    System.out.println("-conf_file <PathToConfFile>");
+    System.out.println("-op_name <create|put|listVault|deleteVault|getFile|deleteFile>");
+    System.out.println("-vault_name <VaultName>");
+    System.out.println("-file_name <FileName>");
   }
 
   /**

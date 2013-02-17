@@ -353,7 +353,7 @@ public class GlacierOperations {
     /** Setting queue with the configured attributes */
     sqsClient.setQueueAttributes(new SetQueueAttributesRequest(sqsQueueURL, queueAttributes)); 
   }
-  
+
   /**
    * Method which puts an archive in a single operation
    * TODO A multi-part upload should be created
@@ -377,6 +377,7 @@ public class GlacierOperations {
     } catch (Exception e){
       throw new GlacierException(e.getMessage());
     }
+
     return uploadResult;
   }
 
@@ -386,14 +387,15 @@ public class GlacierOperations {
    * @return
    */
   public static boolean createVault(String pVaultName) {
+    boolean success = false;
     LOG.info("Creating vault " + pVaultName);
     CreateVaultRequest createVaultRequest = new CreateVaultRequest().withVaultName(pVaultName);
     CreateVaultResult createVaultResult = client.createVault(createVaultRequest);
     if (createVaultResult != null){
       LOG.info("Created vault successfully: " + describeVault(pVaultName));
-      return true;
+      success = true;
     }
-    return false;
+    return success;
   }
 
   /**
@@ -407,6 +409,7 @@ public class GlacierOperations {
       DeleteVaultRequest request = new DeleteVaultRequest().withVaultName(pVaultName);
       client.deleteVault(request);
       LOG.info("Deleted vault: " + pVaultName);
+      success = true;
     } catch (Exception e) {
       LOG.error(e.getMessage());
     }
