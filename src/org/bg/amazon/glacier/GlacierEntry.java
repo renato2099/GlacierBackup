@@ -52,11 +52,13 @@ public class GlacierEntry {
       LOG.info("Vault " + pVaultName + (GlacierOperations.createVault(pVaultName)?" successfully created.":" not created."));
     else if (pOpName.equals("put"))
       LOG.info(pFileName + (GlacierOperations.putArchive(pVaultName, pFileName)?" uploaded successfully.":" not uploaded."));
-    else if (pOpName.equals("list"))
+    else if (pOpName.equals("listVault"))
       LOG.info("Vault " + pVaultName + (GlacierOperations.list(pVaultName)?" listed successfully.":" not listed."));
-    else if (pOpName.equals("get"))
+    else if (pOpName.equals("deleteVault"))
+      LOG.info("Vault " + pVaultName + (GlacierOperations.deleteVault(pVaultName)?" delete successfully.":" not deleted."));
+    else if (pOpName.equals("getFile"))
       LOG.info("File " + pFileName + (GlacierOperations.getArchive(pVaultName, pFileName)?" retrieved successfully":" not retrieved"));
-    else if (pOpName.equals("delete"))
+    else if (pOpName.equals("deleteFile"))
       LOG.info("File " + pFileName + (GlacierOperations.deleteArchive(pVaultName, pFileName)?" deleted successfully":" not deleted"));
     else 
       LOG.info("Command not supported.");

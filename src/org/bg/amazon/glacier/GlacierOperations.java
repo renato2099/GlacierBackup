@@ -31,6 +31,7 @@ import com.amazonaws.services.glacier.AmazonGlacierClient;
 import com.amazonaws.services.glacier.model.CreateVaultRequest;
 import com.amazonaws.services.glacier.model.CreateVaultResult;
 import com.amazonaws.services.glacier.model.DeleteArchiveRequest;
+import com.amazonaws.services.glacier.model.DeleteVaultRequest;
 import com.amazonaws.services.glacier.model.DescribeVaultRequest;
 import com.amazonaws.services.glacier.model.DescribeVaultResult;
 import com.amazonaws.services.glacier.model.GetJobOutputRequest;
@@ -393,6 +394,23 @@ public class GlacierOperations {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Method that deletes an specific vault
+   * @param pVaultName
+   * @return
+   */
+  public static boolean deleteVault(String pVaultName) {
+    boolean success = false;
+    try {
+      DeleteVaultRequest request = new DeleteVaultRequest().withVaultName(pVaultName);
+      client.deleteVault(request);
+      LOG.info("Deleted vault: " + pVaultName);
+    } catch (Exception e) {
+      LOG.error(e.getMessage());
+    }
+    return success;
   }
 
   /**
