@@ -46,7 +46,6 @@ public class GlacierEntry {
       e.printStackTrace();
     }
   }
-//64110 [main] INFO org.bg.amazon.glacier.GlacierEntry - Archive ID: j2XUZsrnJkdiCIjiyKzLlrSY4jv-ixHq-ryitffsCDaA56shiUh2CAkYkcJpeJdyYsOAD1BUZZ4U3Mc5jfCdNc4DkKdwQ9AmXk52dckb2oc3Z1M0PpcSjTs3uBPdwMxdLbWKRTcyDA
 
   private static void execute(String pOpName, String pVaultName, String pFileName){
     if (pOpName.equals("create"))
@@ -55,7 +54,10 @@ public class GlacierEntry {
       LOG.info(pFileName + (GlacierOperations.putArchive(pVaultName, pFileName)?" uploaded successfully.":" not uploaded."));
     else if (pOpName.equals("list"))
       LOG.info("Vault " + pVaultName + (GlacierOperations.list(pVaultName)?" listed successfully.":" not listed."));
-    //else if (pOpName.equals("get"))
+    else if (pOpName.equals("get"))
+      LOG.info("File " + pFileName + (GlacierOperations.getArchive(pVaultName, pFileName)?" retrieved successfully":" not retrieved"));
+    else if (pOpName.equals("delete"))
+      LOG.info("File " + pFileName + (GlacierOperations.deleteArchive(pVaultName, pFileName)?" deleted successfully":" not deleted"));
     else 
       LOG.info("Command not supported.");
   }
@@ -69,7 +71,6 @@ public class GlacierEntry {
     Properties confFile = createProps(pConfFile);
     if (confFile == null)
         throw new GlacierException("Invalid properties file given: " + pConfFile);
-
     GlacierOperations.initialize(createAWSCredentials(confFile.getProperty("amazon.accessKey"), confFile.getProperty("amazon.secretKey")),
                                  confFile.getProperty("amazon.glacier.region"));
   }
@@ -81,6 +82,8 @@ public class GlacierEntry {
    * @return
    */
   private static AWSCredentials createAWSCredentials(String pAccessKey, String pSecretKey){
+    if (pAccessKey == null || pAccessKey.equals("") || pSecretKey == null || pSecretKey.equals(""))
+      throw new GlacierException("Invalid security tokens");
     return new BasicAWSCredentials(pAccessKey, pSecretKey);
   }
 
@@ -89,6 +92,7 @@ public class GlacierEntry {
    * @param pPropFilePath
    * @return
    */
+  @SuppressWarnings("unused")
   public static Properties createProps(String pPropFilePath) {
     try {
       Properties properties = null;

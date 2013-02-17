@@ -21,8 +21,6 @@ import org.slf4j.LoggerFactory;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.auth.PropertiesCredentials;
 import com.amazonaws.auth.policy.Policy;
 import com.amazonaws.auth.policy.Principal;
 import com.amazonaws.auth.policy.Resource;
@@ -32,6 +30,7 @@ import com.amazonaws.auth.policy.actions.SQSActions;
 import com.amazonaws.services.glacier.AmazonGlacierClient;
 import com.amazonaws.services.glacier.model.CreateVaultRequest;
 import com.amazonaws.services.glacier.model.CreateVaultResult;
+import com.amazonaws.services.glacier.model.DeleteArchiveRequest;
 import com.amazonaws.services.glacier.model.DescribeVaultRequest;
 import com.amazonaws.services.glacier.model.DescribeVaultResult;
 import com.amazonaws.services.glacier.model.GetJobOutputRequest;
@@ -73,14 +72,13 @@ public class GlacierOperations {
   /**
    * Object containing Amazon SNS client
    */
-  public static String vaultName = "007";
   public static String snsTopicName = "GlacierNS4ListOperations";
   public static String sqsQueueName = "GlacierQueue4ListOperations";
   public static String sqsQueueARN;
   public static String sqsQueueURL;
   public static String snsTopicARN;
   public static String snsSubscriptionARN;
-  public static String fileName = "output";
+  public static String fileName = "-inventory";
   public static long sleepTime = 600; 
   public static AmazonSQSClient sqsClient;
   public static AmazonSNSClient snsClient;
@@ -99,6 +97,8 @@ public class GlacierOperations {
    * Object in charged of performing all logging operations
    */
   private static final Logger LOG = LoggerFactory.getLogger(GlacierOperations.class);
+  
+  private static final String LOCAL_DIRECTORY = "./";
 
   /**
    * Initializes the necessary objects to perform operations
@@ -108,15 +108,51 @@ public class GlacierOperations {
     LOG.info("Setting AmazonWebServices credentials up.");
     credentials = pAWSCredentials;
     region = pAWSRegion;
-
     LOG.info("Creating AmazonGlacierClient.");
     client = new AmazonGlacierClient(credentials);
     if (client == null)
       throw new GlacierException("Error while creating client with \nAccessKey: " + credentials.getAWSAccessKeyId()
                                   + "\nSecretKey: " + credentials.getAWSSecretKey());
-    client.setEndpoint(region);
+    client.setEndpoint("https://glacier." + region + ".amazonaws.com");
   }
 
+  /**
+   * Method for getting a single archive from Amazon Glacier
+   * @param pVaultName
+   * @param pFileName
+   * @return
+   */
+  public static boolean getArchive(String pVaultName, String pFileName){
+    LOG.info("Getting file " + pFileName);
+    Boolean success = false;
+    try {
+      ArchiveTransferManager atm = new ArchiveTransferManager(client, credentials);
+      atm.download(pVaultName, pFileName, new File(LOCAL_DIRECTORY + pFileName));
+    } catch (Exception e)
+    {
+      LOG.error("Error retrieving file " + pFileName + ".");
+      LOG.error(e.getMessage());
+    }
+    return success;
+  }
+
+  public static boolean deleteArchive(String pVaultName, String pFileName){
+    LOG.info("Getting file " + pFileName);
+    Boolean success = false;
+    try {
+      // Delete the archive.
+      client.deleteArchive(new DeleteArchiveRequest()
+          .withVaultName(pVaultName)
+          .withArchiveId(pFileName));
+      LOG.info("Deleted archive successfully.");
+      success = true;
+    } catch (Exception e)
+    {
+      LOG.error("Error retrieving file " + pFileName + ".");
+      LOG.error(e.getMessage());
+    }
+    return success;
+  }
   /**
    * Method which lists all archives within a vault
    * @param pVaultName
@@ -124,64 +160,54 @@ public class GlacierOperations {
    */
   public static boolean list(String pVaultName){
     Boolean success = false;
-    /*if (getVaultDescription(pVaultName) != null){
-    
-      sqsClient = new AmazonSQSClient(credentials);
-      sqsClient.setEndpoint(region);
-      snsClient = new AmazonSNSClient(credentials);
-      snsClient.setEndpoint(region);
-
-      setupSQS();
-
-      setupSNS();
-
-      String jobId = initiateJobRequest(pVaultName);
-      System.out.println("Jobid = " + jobId);
-
-      success = waitForJobToComplete(jobId, sqsQueueURL);
-      
-      if (!success) 
-        throw new GlacierException("Job for inventoring did not complete successfully.");
-    }*/
-    AWSCredentials credentials = new BasicAWSCredentials("", "");
-
     client = new AmazonGlacierClient(credentials);
-    client.setEndpoint("https://glacier.us-east-1.amazonaws.com");
+    client.setEndpoint("https://glacier." + region + ".amazonaws.com");
     sqsClient = new AmazonSQSClient(credentials);
-    sqsClient.setEndpoint("https://sqs.us-east-1.amazonaws.com");
+    sqsClient.setEndpoint("https://sqs." + region + ".amazonaws.com");
     snsClient = new AmazonSNSClient(credentials);
-    snsClient.setEndpoint("https://sns.us-east-1.amazonaws.com");
+    snsClient.setEndpoint("https://sns." + region + ".amazonaws.com");
     
     try {
+        LOG.info("Setting AmazonSQS service up.");
         setupSQS();
-        
+
+        LOG.info("Setting AmazonSNS service up.");
         setupSNS();
 
         String jobId = initiateJobRequest(pVaultName);
-        System.out.println("Jobid = " + jobId);
+        LOG.info("Job has initiated with Jobid = " + jobId);
         
         success = waitForJobToComplete(jobId, sqsQueueURL);
         if (!success) { throw new Exception("Job did not complete successfully."); }
         
-        downloadJobOutput(jobId);
-        
+        LOG.info("Starting download of inventory file from vault " + pVaultName + ".");
+        downloadJobOutput(jobId, pVaultName);
+
+        LOG.info("Unsubscribing from created services.");
         cleanUp();
-        
+
     } catch (Exception e) {
-        System.err.println("Inventory retrieval failed.");
-        System.err.println(e);
+        LOG.error("Inventory retrieval failed while listing valut " + pVaultName + ".");
+        LOG.error(e.getMessage());
     }
     return success.booleanValue();
   }
 
-  private static void downloadJobOutput(String jobId) throws IOException {
+  /**
+   * Method used to download the inventory obtained from a specific vault
+   * @param jobId
+   * @param pVaultName
+   * @throws IOException
+   */
+  private static void downloadJobOutput(String jobId, String pVaultName) throws IOException {
     
     GetJobOutputRequest getJobOutputRequest = new GetJobOutputRequest()
-        .withVaultName(vaultName)
+        .withVaultName(pVaultName)
         .withJobId(jobId);
     GetJobOutputResult getJobOutputResult = client.getJobOutput(getJobOutputRequest);
 
-    FileWriter fstream = new FileWriter(fileName);
+    LOG.info("Downloading inventory to " + pVaultName + fileName);
+    FileWriter fstream = new FileWriter(pVaultName + fileName);
     BufferedWriter out = new BufferedWriter(fstream);
     BufferedReader in = new BufferedReader(new InputStreamReader(getJobOutputResult.getBody()));            
     String inputLine;
@@ -190,20 +216,33 @@ public class GlacierOperations {
             out.write(inputLine);
         }
     }catch(IOException e) {
+        LOG.error("Error downloading inventory file from " + pVaultName);
         throw new AmazonClientException("Unable to save archive", e);
     }finally{
         try {in.close();}  catch (Exception e) {}
         try {out.close();}  catch (Exception e) {}             
     }
-    System.out.println("Retrieved inventory to " + fileName);
+    LOG.info("Retrieved inventory to " + pVaultName + fileName);
 }
 
-private static void cleanUp() {
+  /**
+   * Cleans subscriptions up
+   */
+  private static void cleanUp() {
     snsClient.unsubscribe(new UnsubscribeRequest(snsSubscriptionARN));
     snsClient.deleteTopic(new DeleteTopicRequest(snsTopicARN));
     sqsClient.deleteQueue(new DeleteQueueRequest(sqsQueueURL));
-}
+  }
 
+  /**
+   * Method which helps us waiting for the job to be completed.
+   * @param jobId
+   * @param sqsQueueUrl
+   * @return
+   * @throws InterruptedException
+   * @throws JsonParseException
+   * @throws IOException
+   */
   private static Boolean waitForJobToComplete(String jobId, String sqsQueueUrl) throws InterruptedException, JsonParseException, IOException {
     
     Boolean messageFound = false;
@@ -233,12 +272,13 @@ private static void cleanUp() {
                 }
             }
         } else {
-          Thread.sleep(sleepTime * 1000); 
+          Thread.sleep(sleepTime * 1000);
+          LOG.info("Waiting for another " + sleepTime/60 + " extra minutes");
         }
       }
     return (messageFound && jobSuccessful);
   }
-  
+
   /**
    * Method that initiates the inventory job
    * @param pVaultName
@@ -266,7 +306,6 @@ private static void cleanUp() {
    * Method for setting up Amazon SNS
    */
   private static void setupSNS() {
-    String snsSubscriptionARN;
     /** Creating notification create request */
     CreateTopicRequest request = new CreateTopicRequest().withName(snsTopicName);
     CreateTopicResult result = snsClient.createTopic(request);
@@ -282,7 +321,7 @@ private static void cleanUp() {
     /** Obtaining the subscription result */
     snsSubscriptionARN = result2.getSubscriptionArn();
   }
-  
+
   /**
    * Method to setup Amazon SQS service
    */
