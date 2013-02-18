@@ -69,20 +69,24 @@ public class GlacierOperations {
   /**
    * Objects to handle Amazon SQS
    */
+  public static AmazonSQSClient sqsClient;
+  public static String sqsQueueName = "GlacierQueue4ListOperations";
+  public static String sqsQueueARN;
+  public static String sqsQueueURL;
 
   /**
    * Object containing Amazon SNS client
    */
+  public static AmazonSNSClient snsClient;
   public static String snsTopicName = "GlacierNS4ListOperations";
-  public static String sqsQueueName = "GlacierQueue4ListOperations";
-  public static String sqsQueueARN;
-  public static String sqsQueueURL;
   public static String snsTopicARN;
   public static String snsSubscriptionARN;
+
+  /**
+   * Objects used while inventoring vaults
+   */
   public static String fileName = "-inventory";
   public static long sleepTime = 600; 
-  public static AmazonSQSClient sqsClient;
-  public static AmazonSNSClient snsClient;
 
   /**
    * Object containing Amazon Credentials
@@ -98,7 +102,10 @@ public class GlacierOperations {
    * Object in charged of performing all logging operations
    */
   private static final Logger LOG = LoggerFactory.getLogger(GlacierOperations.class);
-  
+
+  /**
+   * Path where downloaded file will be stored
+   */
   private static final String LOCAL_DIRECTORY = "./";
 
   /**
@@ -137,6 +144,12 @@ public class GlacierOperations {
     return success;
   }
 
+  /**
+   * Method used for deleting a file from a specific vault
+   * @param pVaultName
+   * @param pFileName
+   * @return
+   */
   public static boolean deleteArchive(String pVaultName, String pFileName){
     LOG.info("Getting file " + pFileName);
     Boolean success = false;
@@ -154,6 +167,7 @@ public class GlacierOperations {
     }
     return success;
   }
+
   /**
    * Method which lists all archives within a vault
    * @param pVaultName

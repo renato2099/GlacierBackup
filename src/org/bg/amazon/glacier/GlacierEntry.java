@@ -22,11 +22,12 @@ public class GlacierEntry {
   public static final Logger LOG = LoggerFactory.getLogger(GlacierEntry.class);
 
   /**
+   * Main entry point for the GlacierEntry class
    * @param args
    * conf_file
    * operation
    * vault_name
-   * file
+   * file_name
    */
   public static void main(String[] args) {
     Options options = createOptions();
@@ -48,6 +49,12 @@ public class GlacierEntry {
     }
   }
 
+  /**
+   * Executes the selected command
+   * @param pOpName
+   * @param pVaultName
+   * @param pFileName
+   */
   private static void execute(String pOpName, String pVaultName, String pFileName){
     if (pOpName.equals("create"))
       LOG.info("Vault " + pVaultName + (GlacierOperations.createVault(pVaultName)?" successfully created.":" not created."));
